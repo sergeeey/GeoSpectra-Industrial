@@ -1,30 +1,30 @@
 # GeoSpectra-Industrial
 
 > **Spectral fingerprinting for 3D defect detection.**
-> Compare a 3D scan to a reference — get NORMAL / DEFORMED / ANOMALOUS in under a second.
+> Compare a 3D scan to a reference -- get NORMAL / DEFORMED / ANOMALOUS in under a second.
 
 ```bash
-geospectra-check reference.stl scan.ply
-# ✅ NORMAL — scan matches reference
+python -m cli.geospectra_check reference.stl scan.ply
+# ✅ NORMAL -- scan matches reference
 ```
 
 ## What This Does
 
 GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects global and local anomalies in noisy 3D scans using graph Laplacian eigenvalue fingerprinting.
 
-**Pipeline:** 3D scan → kNN graph → Laplacian eigenvalues → spectral + geometric fingerprint → compare to reference → verdict.
+**Pipeline:** 3D scan -> kNN graph -> Laplacian eigenvalues -> spectral + geometric fingerprint -> compare to reference -> verdict.
 
 **Two-Mode Architecture (ADR-IND-018):**
-- **Mode A** (Patch Bank): Registration-free, pose-invariant, ~0.3s/scan — coarse screening
-- **Mode B** (Patch Detector): ICP-aligned, exact localization, ~1.1s/scan — precise inspection
-- **Auto mode**: Fast screening → escalation to precise mode only when needed (38% faster)
+- **Mode A** (Patch Bank): Registration-free, pose-invariant, ~0.3s/scan -- coarse screening
+- **Mode B** (Patch Detector): ICP-aligned, exact localization, ~1.1s/scan -- precise inspection
+- **Auto mode**: Fast screening -> escalation to precise mode only when needed (38% faster)
 
 ## Quick Start
 
 ```bash
 git clone https://github.com/sergeeey/GeoSpectra-Industrial.git
 cd GeoSpectra-Industrial
-pip install numpy scipy scikit-learn trimesh
+pip install -r requirements.txt
 python benchmarks/two_mode_integration.py
 ```
 
@@ -43,14 +43,13 @@ core/
 └── pcd_loader.py              # PCD format for Real3D-AD
 
 benchmarks/
-├── two_mode_integration.py    # ✅ 4/4 PASS — validates two-mode architecture
+├── two_mode_integration.py    # ✅ 4/4 PASS -- validates two-mode architecture
 ├── synthetic_defect_suite.py  # 10 defect types
 ├── industrial_mesh_suite.py   # 5 realistic mesh types
-├── mechanism_design_test.py   # Boundary honesty validation
 └── ...
 
 tests/
-└── test_core.py               # 11/11 passing
+└── test_core.py               # 11 tests (pytest)
 ```
 
 ## Project Status
@@ -59,7 +58,7 @@ tests/
 **Date:** July 1, 2026
 **ADRs:** 20 architectural decisions documented
 **Code:** ~5,100 lines Python + Markdown
-**Tests:** 11/11 passing
+**Tests:** 11 tests (pytest)
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for full details.
 
