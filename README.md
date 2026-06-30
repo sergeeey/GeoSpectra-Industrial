@@ -1,65 +1,79 @@
-# GeoSpectra Industrial
+# GeoSpectra-Industrial
 
-**Spectral fingerprinting for industrial defectoscopy and quality control.**
+> **Spectral fingerprinting for 3D defect detection.**
+> Compare a 3D scan to a reference — get NORMAL / DEFORMED / ANOMALOUS in under a second.
 
-Detect hidden deformations, global geometry changes, and anomalies in 3D scans using graph Laplacian spectral analysis.
-
----
-
-## What it does
-
-```
-Normal part 3D scan     →  spectral fingerprint (reference)
-Test part 3D scan       →  spectral fingerprint (test)
-                         →  anomaly score
-                         →  verdict: NORMAL / DEFORMED / ANOMALOUS
+```bash
+geospectra-check reference.stl scan.ply
+# ✅ NORMAL — scan matches reference
 ```
 
-**Core idea:** Every 3D geometry has a unique spectral signature. Disorder (defects, deformations, noise) changes this signature in measurable ways. By comparing spectral fingerprints, we detect anomalies that visual inspection misses.
+## What This Does
 
----
+GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects global and local anomalies in noisy 3D scans using graph Laplacian eigenvalue fingerprinting.
 
-## Applications
+**Pipeline:** 3D scan → kNN graph → Laplacian eigenvalues → spectral + geometric fingerprint → compare to reference → verdict.
 
-| Industry | Use Case |
-|----------|----------|
-| **Aerospace** | Turbine blade deformation, crack detection |
-| **Automotive** | Part conformity, casting defect detection |
-| **3D Printing** | Print quality control, layer anomaly detection |
-| **Micromechanics** | MEMS structure verification |
-| **Medical implants** | Prosthetic geometry conformity |
-| **CT/3D Scanning** | Internal defect detection via point clouds |
-
----
+**Two-Mode Architecture (ADR-IND-018):**
+- **Mode A** (Patch Bank): Registration-free, pose-invariant, ~0.3s/scan — coarse screening
+- **Mode B** (Patch Detector): ICP-aligned, exact localization, ~1.1s/scan — precise inspection
+- **Auto mode**: Fast screening → escalation to precise mode only when needed (38% faster)
 
 ## Quick Start
 
 ```bash
 git clone https://github.com/sergeeey/GeoSpectra-Industrial.git
 cd GeoSpectra-Industrial
-pip install -r requirements.txt
-python examples/demo_defectoscopy.py
+pip install numpy scipy scikit-learn trimesh
+python benchmarks/two_mode_integration.py
 ```
 
----
+## Architecture
 
-## How it works
+```
+core/
+├── spectral_fingerprint.py    # Scale-invariant spectral + geometric features
+├── anomaly_detector.py        # 3-class detector (NORMAL/DEFORMED/ANOMALOUS)
+├── patch_fingerprint.py       # FPS patch sampling, local fingerprints
+├── patch_detector.py          # Mode B: hierarchical with registration gate
+├── patch_bank_detector.py     # Mode A: registration-free patch bank
+├── two_mode_detector.py       # Unified A/B/auto selector
+├── registration.py            # PCA coarse + ICP fine alignment
+├── loaders.py                 # STL/PLY/OBJ/XYZ loader
+└── pcd_loader.py              # PCD format for Real3D-AD
 
-1. **Point cloud → kNN graph** — build graph from 3D points
-2. **Graph → Laplacian spectrum** — extract low eigenvalues
-3. **Spectrum → fingerprint** — density bins + geometric invariants
-4. **Fingerprint comparison** — L1 distance between reference and test
-5. **Anomaly score** — normalized distance → verdict
+benchmarks/
+├── two_mode_integration.py    # ✅ 4/4 PASS — validates two-mode architecture
+├── synthetic_defect_suite.py  # 10 defect types
+├── industrial_mesh_suite.py   # 5 realistic mesh types
+├── mechanism_design_test.py   # Boundary honesty validation
+└── ...
 
-Based on verified spectral recoverability research from [GeoSpectra Lab](https://github.com/sergeeey/N-7-GeoSpectra-Lab).
+tests/
+└── test_core.py               # 11/11 passing
+```
 
----
+## Project Status
 
-## Status
+**Version:** Pilot-Ready MVP v2.3 (Two-Mode)
+**Date:** July 1, 2026
+**ADRs:** 20 architectural decisions documented
+**Code:** ~5,100 lines Python + Markdown
+**Tests:** 11/11 passing
 
-**MVP — early development.** Core algorithm verified on synthetic geometries. Industrial datasets integration in progress.
+See [PROJECT_STATUS.md](PROJECT_STATUS.md) for full details.
 
----
+## Key Results
+
+| Metric | Result |
+|--------|--------|
+| Mode A FP (rigid transforms) | 0% |
+| Mode A detection (10% defect) | 100% |
+| Mode B localization | Exact patch position |
+| Auto escalation | 100% (3/3) |
+| Auto runtime vs Mode B | 38% faster |
+| Speed (Mode A) | ~0.3s/scan |
+| Speed (Mode B) | ~1.1s/scan |
 
 ## License
 

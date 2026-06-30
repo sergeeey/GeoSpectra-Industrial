@@ -1,40 +1,53 @@
-"""
-Spectral fingerprinting core — scale-invariant version.
+"""Spectral fingerprinting for 3D point clouds — GeoSpectra Industrial.
 
-point cloud → kNN graph → Laplacian → eigenvalues → fingerprint
+ADR-IND-001: Two-feature architecture.
+- SPECTRAL features (density + r-stat + cv): detect scan noise, global anomalies
+- GEOMETRIC features (PCA ratios, bbox ratios, asymmetry): detect local deformations
+
+Why two? Spectral features alone miss local defects (bulge, dent, twist)
+that preserve global spectrum. Geometric features catch shape changes
+spectral features miss. Together: FNR < 5% target.
 """
+
 import numpy as np
-from scipy import sparse
 from scipy.sparse.linalg import eigsh
 from sklearn.neighbors import kneighbors_graph
 
 
 def build_knn_graph_laplacian(points, k=12, normalized=True):
-    """Build normalized kNN graph Laplacian from 3D points."""
-    adj = kneighbors_graph(points, n_neighbors=min(k, len(points)-1),
-                           mode='connectivity', include_self=False)
+    """Build symmetric normalized kNN graph Laplacian."""
+    adj = kneighbors_graph(points, n_neighbors=k, mode='connectivity',
+                           include_self=False)
+    adj = adj.maximum(adj.T)
+    deg = np.array(adj.sum(axis=1)).flatten()
     if normalized:
-        deg = np.array(adj.sum(axis=1)).flatten()
-        deg_inv_sqrt = sparse.diags(1.0 / np.sqrt(deg + 1e-10))
-        lap = sparse.eye(len(points)) - deg_inv_sqrt @ adj @ deg_inv_sqrt
+        deg_inv_sqrt = np.power(deg, -0.5, where=deg > 0)
+        deg_inv_sqrt[np.isinf(deg_inv_sqrt)] = 0
+        D_inv_sqrt = np.diag(deg_inv_sqrt)
+        I = np.eye(len(deg))
+        L = I - D_inv_sqrt @ adj.toarray() @ D_inv_sqrt
+        from scipy.sparse import csr_matrix
+        L = csr_matrix(L)
     else:
-        deg = sparse.diags(np.array(adj.sum(axis=1)).flatten())
-        lap = deg - adj
-    return lap
+        from scipy.sparse import csr_matrix, diags
+        L = diags(deg) - adj
+    return L
 
 
-def extract_fingerprint(laplacian, k_eigen=15):
-    """Extract scale-invariant spectral fingerprint.
+def extract_spectral_features(points, k=12, k_eigen=15):
+    """Extract spectral fingerprint: scale-invariant eigenvalue features.
     
-    Returns dict with:
-    - density: 15-bin normalized spectral density
-    - r: mean consecutive spacing ratio
-    - cv: coefficient of variation
+    Features:
+    - density: 15-bin normalized histogram of median-normalized eigenvalues
+    - r: mean consecutive spacing ratio (level repulsion, universal)
+    - cv: coefficient of variation (std/mean of eigenvalues)
+    
+    Scale-invariant: eigenvalues normalized by median before density.
     """
-    n0 = laplacian.shape[0]
-    k = min(k_eigen, n0 - 2)
+    L = build_knn_graph_laplacian(points, k=k, normalized=True)
     try:
-        ev = eigsh(laplacian, k=k, which="SM", return_eigenvectors=False, tol=1e-8)
+        ev = eigsh(L, k=min(k_eigen + 1, points.shape[0] - 2),
+                   which='SM', return_eigenvectors=False, tol=1e-8)
     except Exception:
         return None
     ev = np.sort(np.real(ev))
@@ -42,36 +55,93 @@ def extract_fingerprint(laplacian, k_eigen=15):
     if len(ev) < 5:
         return None
     
-    # Scale-invariant: normalize by median
     ev_norm = ev / np.median(ev)
     dens, _ = np.histogram(ev_norm, bins=15, density=True)
     
-    # r-statistic (level spacing ratio)
+    spacings = np.diff(ev_norm)
     ratios = []
-    for i in range(1, len(ev)-1):
-        sm, sp = ev[i]-ev[i-1], ev[i+1]-ev[i]
-        if max(sm, sp) > 0:
-            ratios.append(min(sm, sp) / max(sm, sp))
+    for i in range(len(spacings) - 1):
+        sm, la = sorted([spacings[i], spacings[i + 1]])
+        ratios.append(sm / la if la > 0 else 0.0)
     r = float(np.mean(ratios)) if ratios else 0.0
-    
-    # Coefficient of variation
-    cv = float(np.std(ev) / np.mean(ev)) if np.mean(ev) > 0 else 0
+    cv = float(np.std(ev) / np.mean(ev)) if np.mean(ev) > 0 else 0.0
     
     return {"density": dens.tolist(), "r": r, "cv": cv}
 
 
-def fingerprint_distance(fp1, fp2, weights=(0.5, 0.3, 0.2)):
-    """Weighted distance between two fingerprints.
+def extract_geometric_features(points):
+    """Extract geometric shape features: local deformations.
     
-    weights: (density, r, cv)
+    Features (scale-invariant by construction):
+    - pca_ratio_21: ratio of 2nd to 1st PCA eigenvalue (elongation)
+    - pca_ratio_32: ratio of 3rd to 2nd PCA eigenvalue (flatness)
+    - pca_ratio_31: ratio of 3rd to 1st PCA eigenvalue (compactness)
+    - bbox_ratio_21: bounding box aspect ratio y/x
+    - bbox_ratio_32: bounding box aspect ratio z/y
+    - centroid_rms: RMS distance from centroid (size-normalized)
+    - asymmetry_x: asymmetry along principal axis
+    
+    Why: spectral features miss local defects (bulge, dent, twist).
+    Geometric features catch shape changes that preserve spectrum.
     """
-    if fp1 is None or fp2 is None:
-        return 1.0
+    if len(points) < 10:
+        return None
     
-    d1, d2 = np.array(fp1["density"]), np.array(fp2["density"])
-    dist_dens = float(np.sum(np.abs(d1 - d2)) / 2.0) if len(d1) == len(d2) else 1.0
-    dist_r = abs(fp1["r"] - fp2["r"])
-    dist_cv = abs(fp1["cv"] - fp2["cv"])
+    # PCA
+    centered = points - points.mean(axis=0)
+    cov = np.cov(centered.T)
+    eigvals = np.linalg.eigvalsh(cov)
+    eigvals = np.sort(eigvals)[::-1]
+    eigvals = np.maximum(eigvals, 1e-10)
     
-    w = weights
-    return w[0] * dist_dens + w[1] * dist_r + w[2] * dist_cv
+    # Bounding box
+    bbox = np.ptp(points, axis=0)
+    bbox = np.maximum(bbox, 1e-10)
+    
+    # Centroid distance
+    centroid = points.mean(axis=0)
+    dists = np.linalg.norm(points - centroid, axis=1)
+    
+    # Asymmetry: difference between + and - along principal axis
+    pca_axis = np.linalg.eigh(cov)[1][:, -1]  # principal axis
+    projections = centered @ pca_axis
+    asymmetry = float(abs(np.percentile(projections, 95) + np.percentile(projections, 5)))
+    
+    return {
+        "pca_ratio_21": float(eigvals[1] / eigvals[0]),
+        "pca_ratio_32": float(eigvals[2] / eigvals[1]),
+        "pca_ratio_31": float(eigvals[2] / eigvals[0]),
+        "bbox_ratio_21": float(bbox[1] / bbox[0]),
+        "bbox_ratio_32": float(bbox[2] / bbox[1]),
+        "bbox_ratio_31": float(bbox[2] / bbox[0]),
+        "centroid_rms": float(np.mean(dists) / np.std(dists)) if np.std(dists) > 0 else 0.0,
+        "asymmetry": asymmetry / (np.mean(dists) + 1e-10),
+    }
+
+
+def extract_fingerprint(points, k=12, k_eigen=15):
+    """Full fingerprint: spectral + geometric features.
+    
+    Returns dict with both feature sets, or None if extraction fails.
+    """
+    spectral = extract_spectral_features(points, k=k, k_eigen=k_eigen)
+    geometric = extract_geometric_features(points)
+    if spectral is None or geometric is None:
+        return None
+    return {"spectral": spectral, "geometric": geometric}
+
+
+def feature_vector(fp):
+    """Convert fingerprint to flat numpy vector for ML."""
+    spec = fp["spectral"]
+    geo = fp["geometric"]
+    vec = []
+    vec.extend(spec["density"])
+    vec.append(spec["r"])
+    vec.append(spec["cv"])
+    vec.extend([
+        geo["pca_ratio_21"], geo["pca_ratio_32"], geo["pca_ratio_31"],
+        geo["bbox_ratio_21"], geo["bbox_ratio_32"], geo["bbox_ratio_31"],
+        geo["centroid_rms"], geo["asymmetry"],
+    ])
+    return np.array(vec, dtype=np.float64)
