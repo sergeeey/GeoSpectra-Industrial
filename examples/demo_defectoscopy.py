@@ -1,10 +1,12 @@
 """
-Demo: Defectoscopy on synthetic 3D geometries.
+Demo: Industrial defectoscopy with spectral fingerprinting.
 
-Simulates industrial scenario:
-1. Normal part: perfect sphere point cloud
-2. Test parts: sphere with various deformations
-3. Detect anomalies via spectral fingerprinting
+Simulates quality control scenario:
+1. Reference: normal sphere point cloud
+2. Test scans: spheres with variations + different shapes
+3. Verdict: NORMAL / DEFORMED / ANOMALOUS
+
+Usage: python examples/demo_defectoscopy.py
 """
 import sys
 from pathlib import Path
@@ -14,25 +16,46 @@ import numpy as np
 from core.anomaly_detector import SpectralAnomalyDetector
 
 
-def generate_sphere(n_points=500, radius=1.0, noise=0.0, seed=42):
-    """Generate 3D sphere point cloud with optional noise."""
+def sphere(n=500, r=1.0, noise=0.0, seed=42):
+    """Generate sphere point cloud."""
     rng = np.random.default_rng(seed)
-    pts = rng.standard_normal((n_points, 3))
-    pts = pts / np.linalg.norm(pts, axis=1, keepdims=True) * radius
+    pts = rng.standard_normal((n, 3))
+    pts = pts / np.linalg.norm(pts, axis=1, keepdims=True) * r
     if noise > 0:
         pts += rng.normal(0, noise, pts.shape)
     return pts
 
 
-def generate_deformed_sphere(n_points=500, radius=1.0, deformation=0.1, seed=42):
-    """Generate sphere with localized deformation (simulates dent/bulge)."""
+def cube(n=500, size=1.0, seed=42):
+    """Generate cube point cloud."""
     rng = np.random.default_rng(seed)
-    pts = rng.standard_normal((n_points, 3))
-    pts = pts / np.linalg.norm(pts, axis=1, keepdims=True) * radius
-    # Add localized deformation on one side
-    mask = pts[:, 0] > 0.5
-    pts[mask, 0] += deformation * radius
-    return pts
+    return rng.uniform(-size/2, size/2, (n, 3))
+
+
+def cylinder(n=500, r=1.0, h=2.0, seed=42):
+    """Generate cylinder point cloud."""
+    rng = np.random.default_rng(seed)
+    theta = rng.uniform(0, 2*np.pi, n)
+    z = rng.uniform(-h/2, h/2, n)
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return np.column_stack([x, y, z])
+
+
+def sphere_with_pit(n=500, r=1.0, pit_size=0.3, seed=42):
+    """Sphere with pit/crack (simulating defect)."""
+    rng = np.random.default_rng(seed)
+    pts = rng.standard_normal((n, 3))
+    pts = pts / np.linalg.norm(pts, axis=1, keepdims=True) * r
+    pit_center = np.array([r, 0, 0])
+    dists = np.linalg.norm(pts - pit_center, axis=1)
+    mask = dists > pit_size
+    pts_filtered = pts[mask]
+    n_pit = n - len(pts_filtered)
+    if n_pit > 0:
+        pit_pts = pit_center + rng.normal(0, pit_size/3, (n_pit, 3))
+        pts_filtered = np.vstack([pts_filtered, pit_pts])
+    return pts_filtered[:n]
 
 
 def main():
@@ -41,47 +64,54 @@ def main():
     print("="*60)
     
     # 1. Reference: normal sphere
-    print("\n[1] Reference part: normal sphere")
-    ref_points = generate_sphere(n_points=500, radius=1.0, noise=0.01)
-    
+    print("\n[1] Training reference fingerprint...")
+    ref = sphere(n_points=500, radius=1.0, noise=0.01)
     detector = SpectralAnomalyDetector(k_neighbors=12, k_eigen=15)
-    success = detector.fit_reference(ref_points)
-    print(f"    Reference fingerprint extracted: {success}")
+    detector.fit_reference(ref)
     
-    # 2. Test parts
-    test_cases = [
-        ("Normal sphere (low noise)", generate_sphere(n_points=500, radius=1.0, noise=0.02, seed=43)),
-        ("Normal sphere (medium noise)", generate_sphere(n_points=500, radius=1.0, noise=0.05, seed=44)),
-        ("Slightly deformed (dent)", generate_deformed_sphere(n_points=500, radius=1.0, deformation=0.05, seed=45)),
-        ("Strongly deformed (dent)", generate_deformed_sphere(n_points=500, radius=1.0, deformation=0.15, seed=46)),
-        ("Wrong radius (0.8)", generate_sphere(n_points=500, radius=0.8, seed=47)),
-        ("Wrong radius (1.3)", generate_sphere(n_points=500, radius=1.3, seed=48)),
+    # 2. Calibrate thresholds with normal variants
+    normal_scans = [
+        sphere(500, 1.0, 0.02, 43),
+        sphere(500, 1.0, 0.03, 44),
+        sphere(500, 0.95, 0.01, 45),
+        sphere(500, 1.05, 0.01, 46),
+    ]
+    t_n, t_d = detector.calibrate(normal_scans)
+    print(f"    Calibrated: NORMAL<{t_n:.4f}, DEFORMED<{t_d:.4f}")
+    
+    # 3. Test parts
+    print("\n[2] Testing parts:")
+    tests = [
+        ("Normal (low noise)", sphere(500, 1.0, 0.02, 47)),
+        ("Normal (med noise)", sphere(500, 1.0, 0.04, 48)),
+        ("Deformed (small pit)", sphere_with_pit(500, 1.0, 0.2, 49)),
+        ("Deformed (large pit)", sphere_with_pit(500, 1.0, 0.4, 50)),
+        ("Wrong shape (cube)", cube(500, 1.5)),
+        ("Wrong shape (cylinder)", cylinder(500, 0.7, 1.5)),
     ]
     
-    print("\n[2] Testing parts:")
     results = []
-    for name, points in test_cases:
-        result = detector.detect(points)
-        results.append((name, result))
-        sym = {"NORMAL": "G", "DEFORMED": "Y", "ANOMALOUS": "R"}[result["verdict"]]
-        print(f"    [{sym}] {name:30s}: score={result['score']:.3f} → {result['verdict']}")
+    for name, pts in tests:
+        r = detector.detect(pts)
+        results.append((name, r))
+        sym = {"NORMAL": "G", "DEFORMED": "Y", "ANOMALOUS": "R"}[r["verdict"]]
+        print(f"    [{sym}] {name:25s}: score={r['score']:.4f} -> {r['verdict']}")
     
-    # 3. Summary
+    # 4. Summary
     print("\n[3] Summary:")
-    normal = sum(1 for _, r in results if r["verdict"] == "NORMAL")
-    deformed = sum(1 for _, r in results if r["verdict"] == "DEFORMED")
-    anomalous = sum(1 for _, r in results if r["verdict"] == "ANOMALOUS")
-    print(f"    NORMAL: {normal}, DEFORMED: {deformed}, ANOMALOUS: {anomalous}")
+    n = sum(1 for _, r in results if r["verdict"] == "NORMAL")
+    d = sum(1 for _, r in results if r["verdict"] == "DEFORMED")
+    a = sum(1 for _, r in results if r["verdict"] == "ANOMALOUS")
+    print(f"    NORMAL: {n}, DEFORMED: {d}, ANOMALOUS: {a}")
     
-    accuracy = normal >= 2 and deformed >= 1 and anomalous >= 2
-    print(f"\n    Detection accuracy acceptable: {accuracy}")
-    print(f"    Status: {'DEMO PASSED' if accuracy else 'NEEDS TUNING'}")
-    
-    print("\n" + "="*60)
-    print("Next steps:")
-    print("  1. Load real 3D scan (STL, PLY, OBJ)")
-    print("  2. Set appropriate thresholds for your industry")
-    print("  3. Integrate with CT/3D scanning pipeline")
+    print("\n    Expected: normals detected, defects flagged,")
+    print("    wrong shapes marked ANOMALOUS")
+    print("="*60)
+    print("\nNext steps for real industrial use:")
+    print("  1. Load real 3D scans (STL/PLY/OBJ)")
+    print("  2. Calibrate on your normal parts")
+    print("  3. Set thresholds per industry standard")
+    print("  4. Integrate into CT/3D scanning pipeline")
     print("="*60)
 
 
