@@ -2,6 +2,15 @@
 
 Spectral 3D inspection for industrial defect detection.
 
+## Scientific Origins
+
+The spectral-fingerprint method here (graph-Laplacian eigenvalues on 3D meshes)
+is adapted from [N-7-GeoSpectra-Lab](https://github.com/sergeeey/N-7-GeoSpectra-Lab)
+— a falsification-first research harness for spectral geometry on compact manifolds
+(Track A: `DISCRETIZATION_SENSITIVE` finite-lattice signal, 7.07x IPR contrast).
+This repo reuses the same core signal-detection principle for a commercial use
+case (industrial 3D-scan QC); independent codebase, independently benchmarked.
+
 ## Quick Start
 
 ```bash
