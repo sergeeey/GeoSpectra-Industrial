@@ -13,19 +13,20 @@ def load_pointcloud(path, n_points=5000, format=None):
     """Load 3D file and sample point cloud.
     
     Args:
-        path: path to 3D file
-        n_points: target number of points to sample
-        format: optional format override ('stl', 'ply', 'obj', 'xyz')
+        path: file path
+        n_points: target number of points
+        format: 'stl', 'ply', 'obj', 'xyz' or None for auto-detect
     
     Returns:
         (N, 3) numpy array of points, or None if failed
     """
     try:
-        if format == 'xyz' or str(path).endswith('.xyz'):
-            pts = np.loadtxt(path)
-            if pts.shape[1] > 3:
-                pts = pts[:, :3]
-            return pts
+        if format is None:
+            format = path.split('.')[-1].lower()
+        
+        if format == 'xyz':
+            data = np.loadtxt(path)
+            return data[:, :3] if data.shape[1] >= 3 else None
         
         mesh = trimesh.load(path, force='mesh')
         if hasattr(mesh, 'sample'):
@@ -39,14 +40,14 @@ def load_pointcloud(path, n_points=5000, format=None):
 
 
 def mesh_info(path):
-    """Get mesh info without loading full point cloud."""
+    """Get mesh metadata without loading full point cloud."""
     try:
         mesh = trimesh.load(path, force='mesh')
         return {
-            "n_vertices": len(mesh.vertices),
-            "n_faces": len(mesh.faces) if hasattr(mesh, 'faces') else 0,
+            "vertices": len(mesh.vertices),
+            "faces": len(mesh.faces) if hasattr(mesh, 'faces') else 0,
             "bounds": mesh.bounds.tolist(),
-            "is_watertight": mesh.is_watertight if hasattr(mesh, 'is_watertight') else None,
+            "volume": float(mesh.volume) if hasattr(mesh, 'volume') else 0.0,
         }
     except Exception as e:
         return {"error": str(e)}

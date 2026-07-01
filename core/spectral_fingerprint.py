@@ -6,7 +6,7 @@ ADR-IND-001: Two-feature architecture.
 
 Why two? Spectral features alone miss local defects (bulge, dent, twist)
 that preserve global spectrum. Geometric features catch shape changes
-spectral features miss. Together: FNR < 5% target.
+that spectral features miss. Together: FNR < 5% target.
 """
 
 import numpy as np
