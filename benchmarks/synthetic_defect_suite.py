@@ -1,14 +1,4 @@
-"""Synthetic defect suite: 10 defect types for benchmarking.
-
-Each defect simulates a real industrial anomaly:
-- noise_low / noise_high: scan noise (sensor artifacts)
-- outliers: sensor outliers (reflections, dust)
-- bulge / dent: local deformation (impact, pressure)
-- twist: global torsional deformation
-- scale_drift: non-uniform scaling (thermal expansion, wrong material)
-- erosion: material loss (wear, corrosion)
-- hole: missing material (drilling error, void)
-"""
+"""Synthetic defect suite: 10 defect types for benchmarking."""
 
 import numpy as np
 
@@ -85,41 +75,28 @@ def defect_scale_drift(points, axis=0, factor=1.08):
 
 
 def defect_erosion(points, ratio=0.15):
-    center = points.mean(axis=0)
-    mask = (points[:, 0] - center[0]) > 0
-    keep = ~(mask & (np.random.rand(len(points)) < ratio))
-    return points[keep].copy()
+    n_remove = int(len(points) * ratio)
+    idx = np.random.choice(len(points), len(points) - n_remove, replace=False)
+    return points[idx]
 
 
 def defect_hole(points, radius_percentile=10):
-    center = points.mean(axis=0)
-    dists = np.linalg.norm(points - center, axis=1)
-    keep = dists > np.percentile(dists, radius_percentile)
-    return points[keep].copy()
+    pts = points.copy()
+    center = pts[np.random.randint(len(pts))]
+    dists = np.linalg.norm(pts - center, axis=1)
+    threshold = np.percentile(dists, radius_percentile)
+    return pts[dists > threshold]
 
 
-DEFECT_REGISTRY = {
-    "none": {"fn": defect_none, "expected": "NORMAL", "category": "clean"},
-    "noise_low": {"fn": defect_noise_low, "expected": "DEFORMED", "category": "noise"},
-    "noise_high": {"fn": defect_noise_high, "expected": "ANOMALOUS", "category": "noise"},
-    "outliers": {"fn": defect_outliers, "expected": "ANOMALOUS", "category": "noise"},
-    "bulge": {"fn": defect_bulge, "expected": "DEFORMED", "category": "structural"},
-    "dent": {"fn": defect_dent, "expected": "DEFORMED", "category": "structural"},
-    "twist": {"fn": defect_twist, "expected": "DEFORMED", "category": "structural"},
-    "scale_drift": {"fn": defect_scale_drift, "expected": "ANOMALOUS", "category": "structural"},
-    "erosion": {"fn": defect_erosion, "expected": "DEFORMED", "category": "structural"},
-    "hole": {"fn": defect_hole, "expected": "ANOMALOUS", "category": "structural"},
+DEFECTS = {
+    "none": defect_none,
+    "noise_low": defect_noise_low,
+    "noise_high": defect_noise_high,
+    "outliers": defect_outliers,
+    "bulge": defect_bulge,
+    "dent": defect_dent,
+    "twist": defect_twist,
+    "scale_drift": defect_scale_drift,
+    "erosion": defect_erosion,
+    "hole": defect_hole,
 }
-
-
-def apply_defect(points, defect_name, seed=None):
-    if seed is not None:
-        np.random.seed(seed)
-    if defect_name not in DEFECT_REGISTRY:
-        raise ValueError(f"Unknown defect: {defect_name}")
-    return DEFECT_REGISTRY[defect_name]["fn"](points)
-
-
-def list_defects():
-    return [{"name": name, "category": info["category"], "expected_verdict": info["expected"]}
-            for name, info in DEFECT_REGISTRY.items()]

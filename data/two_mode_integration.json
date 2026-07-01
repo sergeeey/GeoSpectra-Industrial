@@ -1,0 +1,56 @@
+{
+  "benchmark": "two_mode_integration",
+  "adr": "ADR-IND-018",
+  "seed": 42,
+  "n_test_scans": 14,
+  "analyses": {
+    "mode_a_fp_rate": {
+      "test": "FP on clean transformed scans",
+      "n_scans": 8,
+      "fp_count": 0,
+      "fp_rate_pct": 0.0,
+      "evidence": "[REPRODUCED]"
+    },
+    "mode_a_detection_10pct": {
+      "test": "Detection of 10% defects",
+      "n_scans": 3,
+      "detected": 3,
+      "detection_rate_pct": 100.0,
+      "evidence": "[REPRODUCED]"
+    },
+    "mode_b_localization": {
+      "test": "Localization on aligned scan",
+      "localized": false
+    },
+    "mode_b_registration": {
+      "test": "Registration on rotated scans",
+      "n_rotated": 6,
+      "unreliable_count": 1
+    },
+    "auto_escalation": {
+      "test": "Auto mode escalation",
+      "n_defect_scans": 3,
+      "escalated_count": 3
+    },
+    "auto_jitter_fallback": {
+      "test": "Jitter fallback",
+      "fallback_to_a": false
+    },
+    "runtime": {
+      "mode_a_ms": 308.2,
+      "mode_b_ms": 1108.5,
+      "auto_ms": 688.3,
+      "speedup_a_vs_b": 3.6
+    }
+  },
+  "checks": {
+    "Mode A FP = 0%": true,
+    "Mode A detects 10% defects": true,
+    "Auto escalates on anomalies": true,
+    "A faster than B": true
+  },
+  "checks_passed": 4,
+  "checks_total": 4,
+  "overall": "PASS",
+  "evidence": "[REPRODUCED]"
+}

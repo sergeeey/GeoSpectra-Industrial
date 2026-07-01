@@ -1,0 +1,27 @@
+{
+  "project": "GeoSpectra ScanGuard",
+  "version": "v2.3",
+  "date": "2026-07-01",
+  "status": "Pilot-Ready",
+  "architecture": "Two-Mode",
+  "mode_a": {
+    "fp_rate": "0%",
+    "detection_10pct": "100%",
+    "runtime_ms": 308
+  },
+  "mode_b": {
+    "fp_rate_aligned": "0%",
+    "detection_5pct": "100%",
+    "runtime_ms": 1108
+  },
+  "auto_mode": {
+    "escalation_success": "100%",
+    "runtime_ms": 688,
+    "speedup_vs_b": "38%"
+  },
+  "next_steps": [
+    "Real-world pilot with manufacturing partner",
+    "Real3D-AD benchmark validation",
+    "Threshold tuning on real data"
+  ]
+}
