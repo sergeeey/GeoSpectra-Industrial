@@ -54,7 +54,8 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | trimesh for loading + surface sampling; numpy for internal representation. |
+| **Decision** | Use trimesh for all 3D format loading (STL, PLY, OBJ, XYZ). |
+| **Rationale** | One dependency handles all formats. Consistent (N,3) output. Sampling built-in. |
 
 ---
 
@@ -64,8 +65,8 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | NORMAL (proceed), DEFORMED (inspect), ANOMALOUS (rescan). |
-| **Rationale** | 2-class misses gradations. 4+ class overcomplicates. 3-class maps to real operator actions. |
+| **Decision** | NORMAL (pass), DEFORMED (inspect), ANOMALOUS (rescan). |
+| **Rationale** | 2 classes insufficient — need "yellow" zone between pass and fail. DEFORMED triggers human inspection without stopping line. |
 
 ---
 
@@ -75,8 +76,8 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | Global fingerprint misses defects <5% of surface. Use local patches via FPS. |
-| **Evidence** | 5% bulge on sphere: global dist=0.052 (undetected), max patch dist=2.1 (detected). |
+| **Decision** | Global fingerprint misses defects <5% of points. Local patch architecture required. |
+| **Evidence** | `patch_defect_sweep.py` — global misses 1% defect entirely; patch layer catches it. |
 
 ---
 
@@ -86,7 +87,9 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | FPS centers + kNN patches + top-k mean aggregation. |
+| **Decision** | FPS sampling + kNN patches + top-k mean aggregation. |
+| **Rationale** | FPS gives diverse, well-distributed centers. kNN ensures local neighborhoods. Top-k mean focuses on worst regions. |
+| **Evidence** | 75% at 1%, 100% at 5% defect. |
 
 ---
 
@@ -96,7 +99,8 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | Global layer always runs, patch layer runs after registration gate. |
+| **Decision** | Global + patch + rule-based decision. |
+| **Rationale** | Global catches overall issues; patch catches local defects. Rule-based override prevents patch high/global low confusion. |
 
 ---
 
@@ -106,7 +110,8 @@
 |-------|-------|
 | **Date** | 2026-06-30 |
 | **Status** | ACCEPTED |
-| **Decision** | FPS seed 42 → reproducible centers. Random centers cause irreproducible FP. |
+| **Decision** | FPS seed=42 for reproducible center positions. |
+| **Rationale** | Random centers caused irreproducible results between runs. Deterministic enables debugging and regression testing. |
 
 ---
 
@@ -115,9 +120,9 @@
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-06-30 |
-| **Status** | VALIDATED |
-| **Decision** | If any patch_score >= threshold → LOCAL_DEFECT regardless of global score. |
-| **Kill Test** | Weighted sum (0.2*global + 0.8*patch) missed a defect where global=0.3, patch=3.2. Rule-based catches it. |
+| **Status** | ACCEPTED |
+| **Decision** | If patch_score >= threshold → LOCAL_DEFECT regardless of global. |
+| **Rationale** | Weighted sum dilutes strong local signal with weak global signal. Rule-based preserves local defect detection. |
 
 ---
 
@@ -126,8 +131,9 @@
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-06-30 |
-| **Status** | BLOCKING (resolved by ADR-IND-013 and ADR-IND-018) |
-| **Decision** | Patch detector without registration produces 100% FP on rotated scans. |
+| **Status** | VALIDATED |
+| **Decision** | Patch detector without registration = 100% FP on rotated scans. |
+| **Evidence** | `robustness_lock.py` — 100% FP on 15° rotation without registration. |
 
 ---
 
@@ -136,8 +142,9 @@
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-06-30 |
-| **Status** | VALIDATED |
-| **Decision** | ICP alignment before patch comparison. If confidence < threshold → UNRELIABLE_ALIGNMENT. |
+| **Status** | ACCEPTED |
+| **Decision** | Block patch layer if registration confidence < threshold. |
+| **Rationale** | Prevents false defect alarms from misalignment artifacts. |
 
 ---
 

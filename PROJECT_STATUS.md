@@ -1,7 +1,5 @@
-# GeoSpectra-Industrial: Project Status
-
-> **Date:** July 1, 2026  
-> **Version:** Pilot-Ready MVP v2.3 (Two-Mode)  
+> **Date:** July 1, 2026
+> **Version:** Pilot-Ready MVP v2.3 (Two-Mode)
 > **Total Code:** 5,100+ lines Python + Markdown
 
 ---
@@ -16,7 +14,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 ## Completed Phases
 
-### Phase 1 — Global Detector ✅
+### Phase 1 — Global Detector
 
 | Feature | Status | Evidence |
 |---------|--------|----------|
@@ -28,7 +26,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 **Files:** `core/spectral_fingerprint.py`, `core/anomaly_detector.py`
 
-### Phase 2 — Patch Architecture ✅
+### Phase 2 — Patch Architecture
 
 | Feature | Status | Evidence |
 |---------|--------|----------|
@@ -42,7 +40,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 **Files:** `core/patch_fingerprint.py`, `core/patch_detector.py`
 
-### Phase 2.1 — Robustness Lock ✅
+### Phase 2.1 — Robustness Lock
 
 | Discovery | Impact |
 |-----------|--------|
@@ -52,7 +50,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 **File:** `reports/ROBUSTNESS_LOCK_RESULTS.md`
 
-### Phase 2.2 — Registration Module ✅
+### Phase 2.2 — Registration Module
 
 | Feature | Status | Evidence |
 |---------|--------|----------|
@@ -66,7 +64,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 **Files:** `core/registration.py`, `reports/REGISTRATION_LOCK_RESULTS.md`
 
-### Phase 2.2A — Two-Mode Integration ✅
+### Phase 2.2A — Two-Mode Integration
 
 | Feature | Status | Evidence |
 |---------|--------|----------|
@@ -81,7 +79,7 @@ GeoSpectra ScanGuard is a **spectral 3D inspection prototype** that detects glob
 
 **Files:** `core/patch_bank_detector.py`, `core/two_mode_detector.py`, `benchmarks/two_mode_integration.py`
 
-### Phase 2.3 — Pilot Packaging ✅
+### Phase 2.3 — Pilot Packaging
 
 | Deliverable | Status | File |
 |-------------|--------|------|
@@ -139,10 +137,10 @@ GeoSpectra-Industrial/
 │   ├── registration.py                # ICP + PCA alignment (250 lines)
 │   ├── loaders.py                     # STL/PLY/OBJ/XYZ (80 lines)
 │   └── pcd_loader.py                  # PCD format (90 lines)
-│
+
 ├── cli/
 │   └── geospectra_check.py            # Command-line interface (140 lines)
-│
+
 ├── benchmarks/                        # Validation suite
 │   ├── synthetic_defect_suite.py      # 10 defect types (120 lines)
 │   ├── industrial_mesh_suite.py       # 5 complex meshes (100 lines)
@@ -152,32 +150,40 @@ GeoSpectra-Industrial/
 │   ├── two_mode_integration.py        # Phase 2.2A validation (300 lines)
 │   ├── mechanism_design_test.py       # Boundary honesty test (120 lines)
 │   └── real3d_smoke_test.py           # Phase 3 protocol (200 lines)
-│
+
 ├── examples/                          # Demos
 │   ├── demo_aerospace_bracket.py      # Aerospace inspection
 │   ├── demo_3dprint_quality.py        # 3D print QC
 │   └── demo_implant_inspection.py     # Medical implant check
-│
+
 ├── tests/
 │   └── test_core.py                   # 11 unit tests (all passing)
-│
+
 ├── reports/                           # Documentation
 │   ├── PATCH_MVP_RESULTS.md           # Patch architecture results
 │   ├── ROBUSTNESS_LOCK_RESULTS.md     # Phase 2.1 findings
 │   ├── REGISTRATION_LOCK_RESULTS.md   # Phase 2.2 results
 │   ├── PHASE3_PROTOCOL.md             # Real3D-AD protocol
+│   ├── V14_COHERENCE_GATE.md          # Coherence check analysis
 │   ├── pilot_demo_report.png          # Visual report
-│   ├── ScanGuard_Pitch.pdf            # PDF pitch deck
+│   ├── ScanGuard_Pitch.pdf            # 3-page PDF pitch
 │   └── pilot_summary.json             # Machine-readable summary
-│
+
+├── scripts/
+│   └── session_bootstrap.py           # Context recovery script
+
 ├── BUSINESS_README.md                 # Business-oriented README
 ├── PITCH.md                           # One-page pitch
 ├── PILOT_PROPOSAL.md                  # Detailed pilot proposal
 ├── OUTREACH_PLAN.md                   # Partner outreach strategy
 ├── ADR.md                             # 20 architectural decisions
 ├── README.md                          # Technical README
+├── EVIDENCE_LABELS.md                 # Evidence status definitions
+├── BENCHMARK_RESULTS.md               # All benchmark results
+├── PROJECT_STATUS.md                  # This file
 ├── demo_pilot_report.py               # Report generator
-└── recon_phase1.py                    # Original recon script
+├── recon_phase1.py                    # Original recon script
+└── recon_v2_two_feature.py            # Two-feature recon script
 ```
 
 **Total: ~5,100 lines across 35+ files**
@@ -199,7 +205,7 @@ GeoSpectra-Industrial/
 | Mode B FP (aligned) | 0% |
 | Mode B FP (registered + noise) | 23% |
 | Auto escalation success | 100% (3/3) |
-| Auto runtime vs Mode B | 38% faster |
+| Auto runtime vs Mode B alone | 38% faster |
 | Processing time (Mode A) | ~0.3s/scan |
 | Processing time (Mode B) | ~1.1s/scan |
 | Hardware | CPU only |
