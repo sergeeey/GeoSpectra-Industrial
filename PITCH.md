@@ -11,8 +11,11 @@
 - **Mode B**: Need exact defect location? ICP alignment gives precise coordinates in 1.1 seconds
 - **Auto**: System picks the right mode — 38% faster than always using precise mode
 
-**Validated On:** 10 defect types × 5 industrial mesh types = 50 synthetic scenarios. 0% false positives on clean scans. 100% detection at 10%+ defects.
+**Validated On:** 10 defect types × 5 industrial mesh types = 50 synthetic scenarios.
+- **0% false positives** on clean scans (rotation/translation/scale variants) — [VALIDATED, 8 seeds, reproducible]
+- Detection sensitivity on synthetic data: geometry and sampling-dependent — real-world threshold established during pilot calibration
+- Pilot success criteria: <5% FP rate, >80% detection on known-defective scans (see PILOT_PROPOSAL.md)
 
-**Status:** Pilot-ready. Seeking first manufacturing partner.
+**Status:** Pilot-ready. Seeking first manufacturing partner to establish real-world detection baseline.
 
 **Contact:** See OUTREACH_PLAN.md
